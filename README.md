@@ -22,3 +22,7 @@ All crime categories are recategorised as follows:
 'drugs': 'drugs',
 'possession-of-weapons': 'other',
 'other-crime': 'other'
+
+1. Predict Crime Count for a Postcode Next Month
+2. Classify Likely Type of Crime in a Postcode
+3. Predict if Area is High Risk
