@@ -5,8 +5,13 @@ import folium
 from streamlit_folium import st_folium
 
 
-model = joblib.load("../notebooks/xgb_model.pkl")
+regression_model = joblib.load("../notebooks/xgb_model.pkl")
+classifier_model = joblib.load('xgb_classifier.pkl')
+classifier_le = joblib.load('label_encoder.pkl')
+
+
 predictions = pd.read_csv("../data/future_predictions.csv")
+crime_per_postcode = pd.read_csv("../data/top_crimes_per_postcode.csv")
 
 # Ensure predictions has required columns
 required_columns = ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng']
