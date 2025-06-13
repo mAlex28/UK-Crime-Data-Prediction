@@ -6,9 +6,8 @@ from streamlit_folium import st_folium
 
 
 regression_model = joblib.load("../notebooks/xgb_model.pkl")
-classifier_model = joblib.load('xgb_classifier.pkl')
-classifier_le = joblib.load('label_encoder.pkl')
-
+classifier_model = joblib.load('../notebooks/xgb_classifier.pkl')
+classifier_le = joblib.load('../notebooks/label_encoder.pkl')
 
 predictions = pd.read_csv("../data/future_predictions.csv")
 crime_per_postcode = pd.read_csv("../data/top_crimes_per_postcode.csv")
@@ -21,29 +20,34 @@ if not all(col in predictions.columns for col in required_columns):
 
 st.set_page_config(page_title="UK Crime Prediction", layout="wide")
 
-st.sidebar.title("Postcode Details")
-selected_postcode = st.sidebar.selectbox("Choose a postcode", predictions['postcode'].unique())
+st.title("Postcode Details")
+selected_postcode = st.selectbox("Choose a postcode", predictions['postcode'].unique())
 
 # Filter predictions for the selected postcode
 selected_data = predictions[predictions['postcode'] == selected_postcode]
 
 # Display details in the sidebar
 if not selected_data.empty:
-    st.sidebar.write("**Selected Postcode:**", selected_postcode)
+    st.write("**Selected Postcode:**", selected_postcode)
     for _, row in selected_data.iterrows():
-        st.sidebar.metric(
+        st.metric(
             label=f"Predicted Crimes for {row['month']}",
             value=int(row['predicted_crime_count'])
         )
 else:
     st.sidebar.write("No data available for this postcode.")
 
+if 'clicked_postcode' not in st.session_state:
+    st.session_state.clicked_postcode = selected_postcode
 
-# Create Folium map
-m = folium.Map(location=[51.454514, -2.587910], zoom_start=14, tiles="OpenStreetMap")  # Centered on Bristol
-icon = folium.Icon(prefix="fa", icon="location-pin", color="red")
+col1, col2 = st.columns([3, 1])
 
-popup_html = """
+with col1:
+    # Create Folium map
+    m = folium.Map(location=[51.454514, -2.587910], zoom_start=14, tiles="OpenStreetMap")
+    icon = folium.Icon(prefix="fa", icon="location-pin", color="red")
+
+    popup_html = """
 <style>
     .popup-container {{
         font-family: Arial, sans-serif;
@@ -78,19 +82,39 @@ popup_html = """
 </div>
 """
 
-# Add markers for each postcode
-for _, row in predictions.iterrows():
-    popup_text = popup_html.format(
-        postcode=row['postcode'],
-        month=row['month'],
-        crime_count=int(row['predicted_crime_count'])
-    )
-    folium.Marker(
-        icon=icon,
-        location=[row['lat'], row['lng']],
-        popup=folium.Popup(popup_text, max_width=250),
-        tooltip=row['postcode']
-    ).add_to(m)
+    # Add markers
+    for _, row in predictions.iterrows():
+        popup_text = popup_html.format(
+            postcode=row['postcode'],
+            month=row['month'],
+            crime_count=int(row['predicted_crime_count'])
+        )
+        folium.Marker(
+            icon=icon,
+            location=[row['lat'], row['lng']],
+            popup=folium.Popup(popup_text, max_width=250),
+            tooltip=row['postcode']
+        ).add_to(m)
 
-# Render map in Streamlit
-st_folium(m, width=900, height=600)
+    map_data = st_folium(m, width=900, height=600, key="map", returned_objects=["last_clicked"])
+
+    if map_data['last_clicked'] and 'lat' in map_data['last_clicked']:
+        clicked_postcode = next((row['postcode'] for _, row in predictions.iterrows() if abs(row['lat'] - map_data['last_clicked']['lat']) < 0.001 and abs(row['lng'] - map_data['last_clicked']['lng']) < 0.001), st.session_state.clicked_postcode)
+        st.session_state.clicked_postcode = clicked_postcode
+    else:
+        clicked_postcode = st.session_state.clicked_postcode
+
+
+
+with col2:
+    # Filter crime percentages for the clicked or selected postcode
+    crime_data = crime_per_postcode[crime_per_postcode['postcode'] == st.session_state.clicked_postcode]
+    if not crime_data.empty:
+        st.write("**Crime Percentages:**")
+        crime_row = crime_data.iloc[0]  # Take the first row if multiple entries
+        st.metric(label="Anti-social", value=f"{int(crime_row['anti-social'] * 100)}%")
+        st.metric(label="Theft", value=f"{int(crime_row['theft'] * 100)}%")
+        st.metric(label="Violence", value=f"{int(crime_row['violence'] * 100)}%")
+        st.caption("Crimes with less than 10% probability have been ignored for easier classification.")
+    else:
+        st.write("No crime percentage data available.")

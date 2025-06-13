@@ -6,8 +6,8 @@ import joblib
 
 # Load data
 regression_model = joblib.load("../notebooks/xgb_model.pkl")
-classifier_model = joblib.load('xgb_classifier.pkl')
-classifier_le = joblib.load('label_encoder.pkl')
+classifier_model = joblib.load('../notebooks/xgb_classifier.pkl')
+classifier_le = joblib.load('../notebooks/label_encoder.pkl')
 predictions = pd.read_csv("../data/future_predictions.csv")
 crime_per_postcode = pd.read_csv("../data/top_crimes_per_postcode.csv")
 
