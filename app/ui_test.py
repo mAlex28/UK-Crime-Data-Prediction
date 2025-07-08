@@ -6,12 +6,57 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
+import joblib
+
+# Load models
+regression_model = joblib.load("../assets/models/xgb_model.pkl")
+classifier_model = joblib.load('../assets/models/xgb_classifier.pkl')
+classifier_le = joblib.load('../assets/models//label_encoder.pkl')
+
+# Load predictions
+predictions = pd.read_csv("../assets/predictions/future_predictions.csv")
+crime_per_postcode = pd.read_csv("../assets/predictions/top_crimes_per_postcode.csv")
+risk_level_per_postcode = pd.read_csv("../assets/predictions/risk_level_per_postcode.csv")
+
+# Ensure predictions has required columns
+required_columns = ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng']
+if not all(col in predictions.columns for col in required_columns):
+    st.error("The predictions DataFrame must contain 'postcode', 'month', 'predicted_crime_count', 'lat', and 'lng' columns.")
+    st.stop()
+
+# Ensure crime_per_postcode has required columns
+crime_required_columns = ['postcode', 'anti-social', 'theft', 'violence']
+if not all(col in crime_per_postcode.columns for col in crime_required_columns):
+    st.error("The crime_per_postcode DataFrame must contain 'postcode', 'anti-social', 'theft', and 'violence' columns.")
+    st.stop()
+
+# Ensure risk_level_per_postcode has required columns
+risk_level_per_postcode = ['postcode', 'predicted_crime_count', 'risk']
+if not all(col in risk_level_per_postcode.columns for col in risk_level_per_postcode):
+    st.error("The risk_level_per_postcode DataFrame must contain 'postcode', 'predicted_crime_count', and 'risk' columns.")
+    st.stop()
+
+# Determine most likely crime and its probability
+crime_types = ['anti-social', 'theft', 'violence']
+crime_per_postcode['most_likely_crime'] = crime_per_postcode[crime_types].idxmax(axis=1).str.replace('-', ' ').str.title()
+crime_per_postcode['crime_probability'] = crime_per_postcode[crime_types].max(axis=1)
+
+# Merge predictions with crime_per_postcode
+merged_data = predictions.merge(
+    crime_per_postcode[['postcode', 'most_likely_crime', 'crime_probability']],
+    on='postcode',
+    how='left'
+)
+
+# Handle missing crime data
+merged_data['most_likely_crime'] = merged_data['most_likely_crime'].fillna('N/A')
+merged_data['crime_probability'] = merged_data['crime_probability'].fillna(0)
 
 # Page configuration
 st.set_page_config(
     page_title="UK Crime Prediction Dashboard",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS
@@ -99,7 +144,8 @@ def create_crime_map(df, selected_risk_level, selected_postcode=None):
         df_filtered = df
     
     # Create base map centered on UK
-    m = folium.Map(location=[54.5, -3], zoom_start=6)
+    m = folium.Map(location=[54.5, -3], zoom_start=14,  tiles="OpenStreetMap")
+    icon = icon = folium.Icon(prefix="fa", icon="location-pin", color="red")
     
     # Add markers for each postcode
     for idx, row in df_filtered.iterrows():
