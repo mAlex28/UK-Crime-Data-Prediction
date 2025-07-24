@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
 import joblib
@@ -10,33 +13,32 @@ regression_model = joblib.load("../assets/models/xgb_model.pkl")
 classifier_model = joblib.load('../assets/models/xgb_classifier.pkl')
 classifier_le = joblib.load('../assets/models/label_encoder.pkl')
 
-# Load actual prediction data
-top_crimes = pd.read_csv("../assets/predictions/top_crimes_per_postcode.csv")
+# Load predictions
 future_predictions = pd.read_csv("../assets/predictions/future_predictions.csv")
-risk_levels = pd.read_csv("../assets/predictions/risk_level_per_postcode.csv")
+top_crime_per_postcode = pd.read_csv("../assets/predictions/top_crimes_per_postcode.csv")
+risk_level_per_postcode = pd.read_csv("../assets/predictions/risk_level_per_postcode.csv")
 
-# Validate required columns
-required_cols = {
-    "top_crimes": ['postcode', 'lat', 'lng', 'crime_count_per_month', 'anti-social', 'theft', 'violence'],
+# Ensure predictions have required columns
+required_columns = {
+    "top_crime_per_postcode": ['postcode', 'lat', 'lng', 'crime_count_per_month', 'anti-social', 'theft', 'violence'],
     "future_predictions": ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng'],
-    "risk_levels": ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng', 'risk', 'colour']
+    "risk_level_per_postcode": ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng', 'risk', 'colour']
 }
 
-for name, cols in required_cols.items():
-    df = eval(name)
-    if not all(col in df.columns for col in cols):
-        st.error(f"{name}.csv must include: {', '.join(cols)}")
+for name, cols in required_columns.items():
+    df_check = eval(name)
+    if not all(col in df_check.columns for col in cols):
+        st.error(f"{name}.csv must contain: {', '.join(cols)}")
         st.stop()
 
 # Merge datasets into one
 @st.cache_data
-def load_bristol_data():
+def load_crime_data():
     df = future_predictions.merge(
-        top_crimes[['postcode', 'anti-social', 'theft', 'violence', 'crime_count_per_month']],
+        top_crime_per_postcode[['postcode', 'anti-social', 'theft', 'violence', 'crime_count_per_month']],
         on='postcode', how='left'
     ).merge(
-        risk_levels[['postcode', 'risk', 'colour']],
-        on='postcode', how='left'
+        risk_level_per_postcode[['postcode', 'risk', 'colour']]
     )
 
     df.rename(columns={'lng': 'lon'}, inplace=True)
@@ -52,7 +54,7 @@ def load_bristol_data():
 
     return df
 
-# Risk colour helper
+# Risk Colours
 @st.cache_data
 def get_risk_colour(risk):
     colour_map = {
@@ -96,11 +98,47 @@ def create_crime_map(df, selected_risk, selected_postcode=None):
             ).add_to(m)
     return m
 
+
 # Page config
 st.set_page_config(page_title="Bristol Crime Prediction Dashboard", layout="wide")
 
+# Import font awesome icons
+st.markdown(
+    """
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    """,
+    unsafe_allow_html=True
+)
+
 st.markdown("""
     <style>
+    .main-header {
+        background: #f8f9fa;
+        color: #212529;
+        padding: 0.4rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+            
+    .main-header h1 {
+        color: #212529;
+        margin: 0;
+    }
+
+    .main-header p, .main-header a {
+        color: #495057; 
+        margin: 0;
+        margin-top: 0.5rem;
+    }
+            
+    a:visited {
+        text-decoration: none;
+    }
+            
+    a:hover{
+        color: #000000;
+    }
         .risk-high { border-left: 4px solid #ef4444; }
         .risk-medium { border-left: 4px solid #f59e0b; }
         .risk-low { border-left: 4px solid #10b981; }
@@ -113,35 +151,70 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- MAIN APP ---
-def main():
-    st.title("🔍 Bristol Crime Prediction Dashboard")
-    st.markdown("Using AI to predict and visualise crime risk across Bristol")
 
-    df = load_bristol_data()
+# Main App
+def main():
+    st.info('Currently, crime predictions are available for Bristol. More cities are on the way!')
+
+    # Header
+    st.markdown("""
+    <div class="main-header">
+        <h1>Crime Prediction Dashboard</h1>
+        <p>Using AI to predict crimes in UK cities</p>
+        <a href="https://github.com/mAlex28/UK-Crime-Data-Prediction" style="text-decoration:none;"><i class="fa-brands fa-github" style="color: #495057;"></i> View Source </a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load data
+    df = load_crime_data()
 
     with st.sidebar:
-        st.header("Filters")
-
-        # Postcode or keyword search
-        search = st.text_input("Search Postcode", placeholder="e.g. BS1 1BU")
+        # Search Postcode
+        search = st.text_input("Search Postcode..", placeholder="e.g., BS1 1BU")
         selected_postcode = None
         if search:
             matches = df[df['postcode'].str.contains(search, case=False)]
             if not matches.empty:
                 selected_postcode = st.selectbox("Select Postcode", matches['postcode'].tolist())
             else:
-                st.warning("No matches found")
+                st.warning("No matches found.")
 
+        
         # Month selection
-        month_options = df['month'].dropna().unique()
-        selected_month = st.selectbox("📅 Select Month", sorted(month_options), index=0)
+        month_option = df['month'].dropna().unique()
+        selected_month = st.selectbox("Select Month", sorted(month_option), index=0)
         df = df[df['month'] == selected_month]
 
         # Risk filter
-        selected_risk = st.selectbox("🎯 Risk Level", ['All', 'Low', 'Medium', 'High'])
+        selected_risk = st.selectbox("Risk level", ["Low", "Medium", "High"])
 
         st.divider()
+
+        st.header("Overall Stats")
+        st.metric("Covered Postcodes", df['postcode'].nunique())
+        st.metric("Avg Predicted Crimes", f"{df['predicted_crime_count'].mean():.0f}")
+        st.metric("High Risk Areas", df[df['risk'] == 'High'].shape[0])
+
+
+    # Main visual section
+    col1, col2, col3 = st.columns(spec=[1,3,1], vertical_alignment="top")
+
+    with col1:
+        st.subheader("Bristol Overall")
+        totals = {
+            'Theft': (df['theft'] * df['total_crimes']).sum(),
+            'Violence': (df['violence'] * df['total_crimes']).sum(),
+            'Anti-social': (df['anti-social'] * df['total_crimes']).sum()
+        }
+        for crime, val in sorted(totals.items(), key=lambda x: x[1], reverse=True):
+            st.metric(crime, f"{int(val)}")
+
+    with col2:
+        crime_map = create_crime_map(df, selected_risk, selected_postcode)
+        st_folium(crime_map, height=500)
+
+    with col3:
+
 
         if selected_postcode:
             pd_data = df[df['postcode'] == selected_postcode].iloc[0]
@@ -172,27 +245,8 @@ def main():
         else:
             st.info("Select a postcode to view detailed statistics")
 
-    # Main visual section
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        crime_map = create_crime_map(df, selected_risk, selected_postcode)
-        st_folium(crime_map, height=500)
-
-    with col2:
-        st.header("Overall Stats")
-        st.metric("Covered Postcodes", df['postcode'].nunique())
-        st.metric("Avg Predicted Crimes", f"{df['predicted_crime_count'].mean():.0f}")
-        st.metric("High Risk Areas", df[df['risk'] == 'High'].shape[0])
-
-        st.subheader("Top Crimes Overall")
-        totals = {
-            'Theft': (df['theft'] * df['total_crimes']).sum(),
-            'Violence': (df['violence'] * df['total_crimes']).sum(),
-            'Anti-social': (df['anti-social'] * df['total_crimes']).sum()
-        }
-        for crime, val in sorted(totals.items(), key=lambda x: x[1], reverse=True):
-            st.metric(crime, f"{int(val)} est. cases")
+      
+        
 
     st.markdown(f"""
     <hr>

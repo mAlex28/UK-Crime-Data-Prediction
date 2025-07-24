@@ -11,30 +11,24 @@ import joblib
 # Load models
 regression_model = joblib.load("../assets/models/xgb_model.pkl")
 classifier_model = joblib.load('../assets/models/xgb_classifier.pkl')
-classifier_le = joblib.load('../assets/models//label_encoder.pkl')
+classifier_le = joblib.load('../assets/models/label_encoder.pkl')
 
 # Load predictions
 predictions = pd.read_csv("../assets/predictions/future_predictions.csv")
 crime_per_postcode = pd.read_csv("../assets/predictions/top_crimes_per_postcode.csv")
 risk_level_per_postcode = pd.read_csv("../assets/predictions/risk_level_per_postcode.csv")
 
-# Ensure predictions has required columns
-required_columns = ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng']
-if not all(col in predictions.columns for col in required_columns):
-    st.error("The predictions DataFrame must contain 'postcode', 'month', 'predicted_crime_count', 'lat', and 'lng' columns.")
-    st.stop()
-
-# Ensure crime_per_postcode has required columns
-crime_required_columns = ['postcode', 'anti-social', 'theft', 'violence']
-if not all(col in crime_per_postcode.columns for col in crime_required_columns):
-    st.error("The crime_per_postcode DataFrame must contain 'postcode', 'anti-social', 'theft', and 'violence' columns.")
-    st.stop()
-
-# Ensure risk_level_per_postcode has required columns
-risk_level_per_postcode = ['postcode', 'predicted_crime_count', 'risk']
-if not all(col in risk_level_per_postcode.columns for col in risk_level_per_postcode):
-    st.error("The risk_level_per_postcode DataFrame must contain 'postcode', 'predicted_crime_count', and 'risk' columns.")
-    st.stop()
+# Ensure predictions have required columns
+required_columns = {
+    'predictions': ['postcode', 'month', 'predicted_crime_count', 'lat', 'lng'],
+    'crime_per_postcode': ['postcode', 'anti-social', 'theft', 'violence'],
+    'risk_level_per_postcode': ['postcode', 'predicted_crime_count', 'risk']
+}
+for name, cols in required_columns.items():
+    df_check = eval(name)
+    if not all(col in df_check.columns for col in cols):
+        st.error(f"{name}.csv must contain: {', '.join(cols)}")
+        st.stop()
 
 # Determine most likely crime and its probability
 crime_types = ['anti-social', 'theft', 'violence']
@@ -184,6 +178,8 @@ def create_crime_map(df, selected_risk_level, selected_postcode=None):
     return m
 
 def main():
+    st.info('Currently, crime predictions are available for Bristol. More cities are on the way!')
+
     # Header
     st.markdown("""
     <div class="main-header">
@@ -196,6 +192,7 @@ def main():
     # Load data
     df = load_crime_data()
     
+
     # Sidebar for controls and statistics
     with st.sidebar:
 
