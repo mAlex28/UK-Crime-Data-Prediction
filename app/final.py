@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
 import joblib
-import path
+from pathlib import Path
 import sys
 
-dir = path.Path(__file__).abspath()
-sys.path.append(dir.parent.parent)
+dir = Path(__file__).resolve()
+sys.path.append(str(dir.parent.parent))
 
 # Load models
 regression_model = joblib.load("assets/models/xgb_model.pkl")
