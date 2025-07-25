@@ -5,3 +5,12 @@ numpy
 joblib
 requests
 geopy
+plotly
+folium
+matplotlib
+seaborn
+geopandas
+shapely
+python-dateutil
+imbalanced-learn
+xgboost
