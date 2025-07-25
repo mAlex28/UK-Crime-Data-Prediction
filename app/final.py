@@ -9,9 +9,9 @@ from streamlit_folium import st_folium
 import joblib
 
 # Load models
-regression_model = joblib.load("/assets/models/xgb_model.pkl")
-classifier_model = joblib.load("assets/models/xgb_classifier.pkl")
-classifier_le = joblib.load("assets/models/label_encoder.pkl")
+# regression_model = joblib.load("assets/models/xgb_model.pkl")
+# classifier_model = joblib.load("assets/models/xgb_classifier.pkl")
+# classifier_le = joblib.load("assets/models/label_encoder.pkl")
 
 # Load predictions
 future_predictions = pd.read_csv("assets/predictions/future_predictions.csv")
