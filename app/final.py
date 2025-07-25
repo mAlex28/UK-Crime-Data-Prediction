@@ -33,12 +33,18 @@ for name, cols in required_columns.items():
 
 # Merge datasets into one
 @st.cache_data
-def load_crime_data():
-    df = future_predictions.merge(
+def load_crime_data(selected_month=None):
+
+    df_future = future_predictions.copy()
+    df_future = future_predictions.copy()
+    if selected_month:
+        df_future = df_future[df_future['month'] == selected_month]
+
+    df = df_future.merge(
         top_crime_per_postcode[['postcode', 'anti-social', 'theft', 'violence', 'crime_count_per_month']],
         on='postcode', how='left'
     ).merge(
-        risk_level_per_postcode[['postcode', 'risk', 'colour']]
+        risk_level_per_postcode[['postcode', 'risk', 'colour']],on='postcode', how='left'
     )
 
     df.rename(columns={'lng': 'lon'}, inplace=True)
@@ -52,15 +58,17 @@ def load_crime_data():
     df['most_likely_crime'] = df[crime_types].idxmax(axis=1).str.replace('-', ' ').str.title()
     df['crime_probability'] = df[crime_types].max(axis=1)
 
+    df = df.drop_duplicates(subset='postcode')
+
     return df
 
 # Risk Colours
 @st.cache_data
 def get_risk_colour(risk):
     colour_map = {
-        'High': '#ef4444',
-        'Medium': '#f59e0b',
-        'Low': '#10b981'
+        'High': "#dd5858ba",
+        'Medium': "#cf9022bc",
+        'Low': "#2ae15bbf"
     }
     return colour_map.get(risk, '#6b7280')
 
@@ -69,7 +77,28 @@ def create_crime_map(df, selected_risk, selected_postcode=None):
     if selected_risk != 'All':
         df = df[df['risk'] == selected_risk]
 
-    m = folium.Map(location=[51.4545, -2.5879], zoom_start=13)
+    # Default location: centre of Bristol
+    default_location = [51.4545, -2.5879]
+    default_zoom = 13
+
+    if selected_postcode:
+        focus_match = df[df['postcode'].str.startswith(selected_postcode, na=False)]
+
+        if not focus_match.empty:
+            focus_row = focus_match.iloc[0]
+            map_location = [focus_row['lat'], focus_row['lon']]
+            map_zoom = 16
+        else:
+            map_location = default_location
+            map_zoom = default_zoom
+    else:
+        map_location = default_location
+        map_zoom = default_zoom
+
+    # Create map with dynamic location
+    m = folium.Map(location=map_location, zoom_start=map_zoom)
+
+    # Add markers
     for _, row in df.iterrows():
         colour = get_risk_colour(row['risk'])
         popup = f"""
@@ -88,11 +117,13 @@ def create_crime_map(df, selected_risk, selected_postcode=None):
         else:
             folium.CircleMarker(
                 location=[row['lat'], row['lon']],
-                radius=max(3, row['predicted_crime_count'] / 500),
+                radius=10,
                 color=colour,
                 fill=True,
                 fill_color=colour,
-                fill_opacity=0.7,
+                fill_opacity=0.15,
+                opacity=1,
+                stroke=False,
                 popup=popup,
                 tooltip=row['postcode']
             ).add_to(m)
@@ -139,15 +170,16 @@ st.markdown("""
     a:hover{
         color: #000000;
     }
-        .risk-high { border-left: 4px solid #ef4444; }
-        .risk-medium { border-left: 4px solid #f59e0b; }
-        .risk-low { border-left: 4px solid #10b981; }
-        .crime-metric {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 0.5rem 0;
-        }
+    
+    .risk-high { border-left: 4px solid #ef4444; }
+    .risk-medium { border-left: 4px solid #f59e0b; }
+    .risk-low { border-left: 4px solid #10b981; }
+    .crime-metric {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -164,11 +196,21 @@ def main():
         <a href="https://github.com/mAlex28/UK-Crime-Data-Prediction" style="text-decoration:none;"><i class="fa-brands fa-github" style="color: #495057;"></i> View Source </a>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Load data
-    df = load_crime_data()
+
+    # Get first and last month of data available
+    all_dates = pd.to_datetime(load_crime_data()['month'].dropna().unique())
+    all_dates = sorted(all_dates)
+    first_month = all_dates[0].strftime('%B %Y')
+    last_month = all_dates[-1].strftime('%B %Y')
 
     with st.sidebar:
+        # Month selection
+        month_options = sorted(future_predictions['month'].dropna().unique())
+        selected_month = st.selectbox("Select Month", sorted(month_options), index=0)
+
+        # Load data
+        df = load_crime_data(selected_month)
+
         # Search Postcode
         search = st.text_input("Search Postcode..", placeholder="e.g., BS1 1BU")
         selected_postcode = None
@@ -178,12 +220,6 @@ def main():
                 selected_postcode = st.selectbox("Select Postcode", matches['postcode'].tolist())
             else:
                 st.warning("No matches found.")
-
-        
-        # Month selection
-        month_option = df['month'].dropna().unique()
-        selected_month = st.selectbox("Select Month", sorted(month_option), index=0)
-        df = df[df['month'] == selected_month]
 
         # Risk filter
         selected_risk = st.selectbox("Risk level", ["Low", "Medium", "High"])
@@ -197,25 +233,23 @@ def main():
 
 
     # Main visual section
-    col1, col2, col3 = st.columns(spec=[1,3,1], vertical_alignment="top")
+    col1, col2 = st.columns(spec=[2,1], vertical_alignment="top")
+
+    # with col1:
+        # st.subheader("Bristol Overall")
+        # totals = {
+        #     'Theft': (df['theft'] * df['total_crimes']).sum(),
+        #     'Violence': (df['violence'] * df['total_crimes']).sum(),
+        #     'Anti-social': (df['anti-social'] * df['total_crimes']).sum()
+        # }
+        # for crime, val in sorted(totals.items(), key=lambda x: x[1], reverse=True):
+        #     st.metric(crime, f"{int(val)}")
 
     with col1:
-        st.subheader("Bristol Overall")
-        totals = {
-            'Theft': (df['theft'] * df['total_crimes']).sum(),
-            'Violence': (df['violence'] * df['total_crimes']).sum(),
-            'Anti-social': (df['anti-social'] * df['total_crimes']).sum()
-        }
-        for crime, val in sorted(totals.items(), key=lambda x: x[1], reverse=True):
-            st.metric(crime, f"{int(val)}")
+        crime_map = create_crime_map(df, selected_risk, selected_postcode)
+        st_folium(crime_map, height=500, width=700)
 
     with col2:
-        crime_map = create_crime_map(df, selected_risk, selected_postcode)
-        st_folium(crime_map, height=500)
-
-    with col3:
-
-
         if selected_postcode:
             pd_data = df[df['postcode'] == selected_postcode].iloc[0]
             st.markdown(f"""
@@ -246,14 +280,14 @@ def main():
             st.info("Select a postcode to view detailed statistics")
 
       
-        
+    
 
     st.markdown(f"""
     <hr>
     <div style='text-align:center; color: #6b7280'>
-        ⚠️ Predictions based on AI models and historic trends.<br>
-        For informational use only. <br>
-        <strong>Prediction period: {selected_month}</strong>
+        ⚠️ This is a learning project — predictions are generated using AI models and historical data.<br>
+    They may not be accurate. <br>
+        <strong>Prediction period: {first_month} to {last_month}</strong>
     </div>
     """, unsafe_allow_html=True)
 
