@@ -7,11 +7,16 @@ from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
 import joblib
+import path
+import sys
+
+dir = path.Path(__file__).abspath()
+sys.append.path(dir.parent.parent)
 
 # Load models
-# regression_model = joblib.load("assets/models/xgb_model.pkl")
-# classifier_model = joblib.load("assets/models/xgb_classifier.pkl")
-# classifier_le = joblib.load("assets/models/label_encoder.pkl")
+regression_model = joblib.load("assets/models/xgb_model.pkl")
+classifier_model = joblib.load("assets/models/xgb_classifier.pkl")
+classifier_le = joblib.load("assets/models/label_encoder.pkl")
 
 # Load predictions
 future_predictions = pd.read_csv("assets/predictions/future_predictions.csv")
