@@ -9,14 +9,14 @@ from streamlit_folium import st_folium
 import joblib
 
 # Load models
-regression_model = joblib.load("../assets/models/xgb_model.pkl")
-classifier_model = joblib.load('../assets/models/xgb_classifier.pkl')
-classifier_le = joblib.load('../assets/models/label_encoder.pkl')
+regression_model = joblib.load("assets/models/xgb_model.pkl")
+classifier_model = joblib.load('assets/models/xgb_classifier.pkl')
+classifier_le = joblib.load('assets/models/label_encoder.pkl')
 
 # Load predictions
-future_predictions = pd.read_csv("../assets/predictions/future_predictions.csv")
-top_crime_per_postcode = pd.read_csv("../assets/predictions/top_crimes_per_postcode.csv")
-risk_level_per_postcode = pd.read_csv("../assets/predictions/risk_level_per_postcode.csv")
+future_predictions = pd.read_csv("assets/predictions/future_predictions.csv")
+top_crime_per_postcode = pd.read_csv("assets/predictions/top_crimes_per_postcode.csv")
+risk_level_per_postcode = pd.read_csv("assets/predictions/risk_level_per_postcode.csv")
 
 # Ensure predictions have required columns
 required_columns = {
