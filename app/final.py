@@ -11,7 +11,7 @@ import path
 import sys
 
 dir = path.Path(__file__).abspath()
-sys.append.path(dir.parent.parent)
+sys.path.append.path(dir.parent.parent)
 
 # Load models
 regression_model = joblib.load("assets/models/xgb_model.pkl")
