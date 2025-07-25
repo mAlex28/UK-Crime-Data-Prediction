@@ -14,3 +14,4 @@ shapely
 python-dateutil
 imbalanced-learn
 xgboost
+streamlit_folium
