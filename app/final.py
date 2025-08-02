@@ -13,7 +13,7 @@ import sys
 dir = Path(__file__).resolve().parent
 
 # Load models
-regression_model = joblib.load(dir / "assets/models/xgb_model.pkl")
+regression_model = joblib.load(dir / "../assets/models/xgb_model.pkl")
 classifier_model = joblib.load(dir / "assets/models/xgb_classifier.pkl")
 classifier_le = joblib.load(dir / "assets/models/label_encoder.pkl")
 
