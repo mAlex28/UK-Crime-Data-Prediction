@@ -1,0 +1,12 @@
+name: Keep Streamlit Awake
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl the app
+        run: curl -s https://crime-prediction-app.streamlit.app/ > /dev/null
