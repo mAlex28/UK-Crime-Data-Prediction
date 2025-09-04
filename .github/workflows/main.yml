@@ -1,12 +1,13 @@
 name: Keep Streamlit Awake
 
 on:
+  workflow_dispatch:  # lets you trigger manually from Actions tab
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"  # runs at the start of every hour
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Curl the app
-        run: curl -s https://crime-prediction-app.streamlit.app/ > /dev/null
+      - name: Curl the Streamlit app
+        run: curl -s https://your-app-name.streamlit.app > /dev/null
