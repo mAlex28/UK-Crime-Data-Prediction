@@ -190,7 +190,7 @@ st.markdown("""
 
 # Main App
 def main():
-    st.info('Currently, crime predictions are available for Bristol. More cities are on the way!')
+    # st.info('Currently, crime predictions are available for Bristol. More cities are on the way!')
 
     # Header
     st.markdown("""
@@ -274,7 +274,7 @@ def main():
 
             # Pie chart
             fig = px.pie(
-                names=['Theft', 'Violence', 'Anti-social'],
+                names=['Theft', 'Violence', 'Anti-social', 'Drugs', 'Other'],
                 values=[pd_data['theft'], pd_data['violence'], pd_data['anti-social']],
                 title="Most Likely Crime Distribution"
             )
