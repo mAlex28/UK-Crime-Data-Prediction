@@ -274,7 +274,7 @@ def main():
 
             # Pie chart
             fig = px.pie(
-                names=['Theft', 'Violence', 'Anti-social', 'Drugs', 'Other'],
+                names=['Theft', 'Violence', 'Anti-social'],
                 values=[pd_data['theft'], pd_data['violence'], pd_data['anti-social']],
                 title="Most Likely Crime Distribution"
             )
