@@ -202,7 +202,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # Get first and last month of data available
-    all_dates = pd.to_datetime(load_crime_data()['month'].dropna().unique())
+    all_dates = pd.to_datetime(future_predictions['month'].dropna().unique())
     all_dates = sorted(all_dates)
     first_month = all_dates[0].strftime('%B %Y')
     last_month = all_dates[-1].strftime('%B %Y')
