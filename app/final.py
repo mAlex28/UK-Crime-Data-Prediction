@@ -44,6 +44,9 @@ def load_crime_data(selected_month=None):
     if selected_month:
         df_future = df_future[df_future['month'] == selected_month]
 
+    for df_ in [df_future, top_crime_per_postcode, risk_level_per_postcode]:
+        df_['postcode'] = df_['postcode'].str.strip().str.upper()
+
     df = df_future.merge(
         top_crime_per_postcode[['postcode', 'anti-social', 'theft', 'violence', 'crime_count_per_month']],
         on='postcode', how='left'
@@ -59,6 +62,7 @@ def load_crime_data(selected_month=None):
 
     # Most likely crime
     crime_types = ['anti-social', 'theft', 'violence']
+    df[crime_types] = df[crime_types].fillna(0)
     df['most_likely_crime'] = df[crime_types].idxmax(axis=1).str.replace('-', ' ').str.title()
     df['crime_probability'] = df[crime_types].max(axis=1)
 
